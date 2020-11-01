@@ -98,6 +98,14 @@ namespace LECertManager
             }
         }
         
+        /// <summary>
+        /// Обновление сертификата в KeyVault из Lets Encrypt
+        /// URL для вызова: POST  https://function.application.uri/api/certificates/{name}
+        /// Данные о сертификате и KeyVault берутся из конфигурации по ключу Name (параметр функции)
+        /// </summary>
+        /// <param name="req">HTTP-request, предоставляется Host'ом</param>
+        /// <param name="name">Имя сертификата для обновления в конфигурации приложенрия</param>
+        /// <returns></returns>
         [FunctionName("UpdateCertificate")]
         public async Task<IActionResult> UpdateCertificateAsync(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = "certificates/{name}")]
