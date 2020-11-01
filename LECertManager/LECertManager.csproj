@@ -15,7 +15,6 @@
         <PackageReference Include="Microsoft.Azure.Management.ResourceManager.Fluent" Version="1.35.0" />
         <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="3.0.7" />
         <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-        <PackageReference Include="Strathweb.AspNetCore.AzureBlobFileProvider" Version="0.4.0" />
     </ItemGroup>
     <ItemGroup>
         <None Update="host.json">
@@ -28,5 +27,8 @@
         <None Update="appsettings.local.json">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\AzureBlobFileProvider\src\Strathweb.AspNetCore.AzureBlobFileProvider\Strathweb.AspNetCore.AzureBlobFileProvider.csproj" />
     </ItemGroup>
 </Project>
