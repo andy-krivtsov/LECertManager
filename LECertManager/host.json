@@ -1,0 +1,17 @@
+{
+    "version": "2.0",
+    "logging": {
+        "logLevel": {
+            "LECertManager": "Information",
+            "default": "Information"
+        },
+        "console": {
+            "default": "Information"
+        },
+        "applicationInsights": {
+            "samplingSettings": {
+                "isEnabled": true
+            }
+        }        
+    }
+}

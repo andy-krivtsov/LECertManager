@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LECertManager", "LECertManager\LECertManager.csproj", "{4EAAA1E9-CAEB-403D-BD65-27D879A39715}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LECertManager.Tests", "LECertManager.Tests\LECertManager.Tests.csproj", "{AFE4AF6F-F72E-439C-B9C9-06AF600DB4BE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4EAAA1E9-CAEB-403D-BD65-27D879A39715}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EAAA1E9-CAEB-403D-BD65-27D879A39715}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EAAA1E9-CAEB-403D-BD65-27D879A39715}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EAAA1E9-CAEB-403D-BD65-27D879A39715}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFE4AF6F-F72E-439C-B9C9-06AF600DB4BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFE4AF6F-F72E-439C-B9C9-06AF600DB4BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFE4AF6F-F72E-439C-B9C9-06AF600DB4BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFE4AF6F-F72E-439C-B9C9-06AF600DB4BE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
