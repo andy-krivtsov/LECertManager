@@ -56,6 +56,14 @@ namespace LECertManager
             return cert;
         }
 
+        /// <summary>
+        /// Получить данные сертификата, управляемого приложением, из KeyVault
+        /// URL для вызова: GET  https://function.application.uri/api/certificates/{name}
+        /// Данные о сертификате и KeyVault берутся из конфигурации по ключу Name (параметр функции)
+        /// </summary>
+        /// <param name="req">HTTP-request, предоставляется Host'ом</param>
+        /// <param name="name">Имя сертификата для обновления в конфигурации приложенрия</param>
+        /// <returns>DTO объет типа CertificateDto</returns>
         [FunctionName("GetCertificateInfo")]
         public async Task<IActionResult> GetCertificateInfoAsync(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "certificates/{name}")]
