@@ -77,10 +77,12 @@ stages:
                   inputs:
                     azureSubscription: '$(azureSubscription)'
                     resourceGroupName: '$(rgName)'
+                    deployToSlotOrASE: true
                     slotName: dev
                     appType: functionApp
                     appName: $(functionAppName)
                     package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+                    deploymentMethod: 'auto'
                     
       - deployment: StageDeploy
         displayName: 'Deploy to Stage/Production slot'
@@ -98,9 +100,11 @@ stages:
                     displayName: 'Azure functions app deploy: production'
                     inputs:
                       azureSubscription: '$(azureSubscription)'
+                      appType: 'functionApp'
+                      appName: $(functionAppName)
+                      deployToSlotOrASE: true
                       resourceGroupName: '$(rgName)'
-                      slotName: production
-                      appType: functionApp
-                      appName: $(functionAppName)                      
+                      slotName: 'production'
                       package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+                      deploymentMethod: 'auto'
                   
