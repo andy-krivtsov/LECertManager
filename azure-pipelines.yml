@@ -73,7 +73,7 @@ stages:
             deploy:
               steps:
                 - task: AzureFunctionApp@1
-                  displayName: 'Azure functions app deploy: stage'
+                  displayName: 'Azure functions app deploy: development'
                   inputs:
                     azureSubscription: '$(azureSubscription)'
                     resourceGroupName: '$(rgName)'
