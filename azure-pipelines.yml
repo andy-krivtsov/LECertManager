@@ -71,10 +71,9 @@ stages:
         strategy:
           runOnce:
             deploy:
-
               steps:
                 - task: AzureFunctionApp@1
-                  displayName: 'Azure functions app deploy'
+                  displayName: 'Azure functions app deploy: stage'
                   inputs:
                     azureSubscription: '$(azureSubscription)'
                     resourceGroupName: '$(rgName)'
@@ -94,10 +93,9 @@ stages:
           strategy:           
             runOnce:
               deploy:
-
                 steps:
                   - task: AzureFunctionApp@1
-                    displayName: 'Azure functions app deploy'
+                    displayName: 'Azure functions app deploy: production'
                     inputs:
                       azureSubscription: '$(azureSubscription)'
                       resourceGroupName: '$(rgName)'
