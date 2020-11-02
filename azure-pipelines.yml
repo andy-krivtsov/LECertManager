@@ -92,19 +92,19 @@ stages:
         pool:
           vmImage: $(vmImageName)
 
-          strategy:           
-            runOnce:
-              deploy:
-                steps:
-                  - task: AzureFunctionApp@1
-                    displayName: 'Azure functions app deploy: production'
-                    inputs:
-                      azureSubscription: '$(azureSubscription)'
-                      appType: 'functionApp'
-                      appName: '$(functionAppName)'
-                      deployToSlotOrASE: true
-                      resourceGroupName: '$(rgName)'
-                      slotName: 'production'
-                      package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
-                      deploymentMethod: 'auto'
+        strategy:           
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureFunctionApp@1
+                  displayName: 'Azure functions app deploy: production'
+                  inputs:
+                    azureSubscription: '$(azureSubscription)'
+                    appType: 'functionApp'
+                    appName: '$(functionAppName)'
+                    deployToSlotOrASE: true
+                    resourceGroupName: '$(rgName)'
+                    slotName: 'production'
+                    package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+                    deploymentMethod: 'auto'
                   
