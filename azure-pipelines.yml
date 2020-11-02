@@ -78,9 +78,9 @@ stages:
                     azureSubscription: '$(azureSubscription)'
                     resourceGroupName: '$(rgName)'
                     deployToSlotOrASE: true
-                    slotName: dev
+                    slotName: 'dev'
                     appType: functionApp
-                    appName: $(functionAppName)
+                    appName: '$(functionAppName)'
                     package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
                     deploymentMethod: 'auto'
                     
@@ -101,7 +101,7 @@ stages:
                     inputs:
                       azureSubscription: '$(azureSubscription)'
                       appType: 'functionApp'
-                      appName: $(functionAppName)
+                      appName: '$(functionAppName)'
                       deployToSlotOrASE: true
                       resourceGroupName: '$(rgName)'
                       slotName: 'production'
