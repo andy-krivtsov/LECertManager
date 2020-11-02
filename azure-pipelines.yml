@@ -2,6 +2,7 @@
   branches:
     include:
       - master
+      - refs/tags/*
   paths:
     include:
       - LECertManager/*
@@ -31,6 +32,7 @@ stages:
         displayName: Build
         pool:
           vmImage: $(vmImageName)
+          
 
         steps:
           - task: DotNetCoreCLI@2
@@ -58,9 +60,11 @@ stages:
     condition: succeeded()
 
     jobs:
-      - deployment: Deploy
-        displayName: Deploy
-        environment: 'development'
+      - deployment: DevDeploy
+        displayName: 'Deploy to Dev slot'
+        environment: 'Development'
+        condition: eq(variables['build.sourceBranch'], 'refs/heads/master')
+        
         pool:
           vmImage: $(vmImageName)
 
@@ -78,3 +82,27 @@ stages:
                     appType: functionApp
                     appName: $(functionAppName)
                     package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+                    
+      - deployment: StageDeploy
+        displayName: 'Deploy to Stage/Production slot'
+        environment: 'Stage'
+        condition: startsWith(variables['build.sourceBranch'], 'refs/tags/')
+
+        pool:
+          vmImage: $(vmImageName)
+
+          strategy:           
+            runOnce:
+              deploy:
+
+                steps:
+                  - task: AzureFunctionApp@1
+                    displayName: 'Azure functions app deploy'
+                    inputs:
+                      azureSubscription: '$(azureSubscription)'
+                      resourceGroupName: '$(rgName)'
+                      slotName: production
+                      appType: functionApp
+                      appName: $(functionAppName)                      
+                      package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
+                  
