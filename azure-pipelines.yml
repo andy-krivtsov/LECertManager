@@ -8,10 +8,13 @@
 
 variables:
   # Azure Resource Manager connection created during pipeline creation
-  azureSubscription: 'LE Cert Manager Dev'
+  azureSubscription: 'LECertMgr-DevEnv'
 
   # Function app name
-  functionAppName: 'le-cert-mgr-dev'
+  functionAppName: 'le-cert-mgr'
+  
+  # App Resource Group name 
+  rgName: "LECertManager"
 
   # Agent VM image name
   vmImageName: 'vs2017-win2016'
@@ -70,6 +73,8 @@ stages:
                   displayName: 'Azure functions app deploy'
                   inputs:
                     azureSubscription: '$(azureSubscription)'
+                    resourceGroupName: '$(rgName)'
+                    slotName: dev
                     appType: functionApp
                     appName: $(functionAppName)
                     package: '$(Pipeline.Workspace)/drop/$(Build.BuildId).zip'
