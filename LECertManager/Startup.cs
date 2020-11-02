@@ -65,7 +65,7 @@ namespace LECertManager
                     configuration.GetSection("AppSettings").Bind(settings);
                 });
             
-            builder.Services.AddTransient<IAcmeKeyCache, AcmeKeyFileCache>();
+            builder.Services.AddTransient<IAcmeKeyCache, AcmeKeyVaultCache>();
             builder.Services.AddTransient<KeyVaultService>();
             builder.Services.AddTransient<AcmeService>();
             builder.Services.AddTransient<IDnsServiceConnector, AzureDnsConnector>();

@@ -62,7 +62,7 @@ namespace LECertManager
         /// Данные о сертификате и KeyVault берутся из конфигурации по ключу Name (параметр функции)
         /// </summary>
         /// <param name="req">HTTP-request, предоставляется Host'ом</param>
-        /// <param name="name">Имя сертификата для обновления в конфигурации приложенрия</param>
+        /// <param name="name">Имя сертификата в конфигурации приложенрия</param>
         /// <returns>DTO объет типа CertificateDto</returns>
         [FunctionName("GetCertificateInfo")]
         public async Task<IActionResult> GetCertificateInfoAsync(
@@ -80,6 +80,17 @@ namespace LECertManager
             }
         }
 
+        /// <summary>
+        /// Проверить expiration-date сертификата , управляемого приложением, из KeyVault
+        /// Если сертификат уже истек или сремя до истечения меньше 20 дней (задается в конфигурации)
+        /// то возвращается 403 Forbidden, если не истек - 200 OK и DTO с данными сертификата
+        /// 
+        /// URL для вызова: GET  https://function.application.uri/api/certificates/{name}/status
+        /// Данные о сертификате и KeyVault берутся из конфигурации по ключу Name (параметр функции)
+        /// </summary>
+        /// <param name="req">HTTP-request, предоставляется Host'ом</param>
+        /// <param name="name">Имя сертификата в конфигурации приложенрия</param>
+        /// <returns>DTO объет типа CertificateDto</returns>
         [FunctionName("CheckCertificate")]
         public async Task<IActionResult> CheckCertificateAsync(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "certificates/{name}/status")]
@@ -110,6 +121,12 @@ namespace LECertManager
         /// Обновление сертификата в KeyVault из Lets Encrypt
         /// URL для вызова: POST  https://function.application.uri/api/certificates/{name}
         /// Данные о сертификате и KeyVault берутся из конфигурации по ключу Name (параметр функции)
+        /// 
+        /// По умолчанию функция не обновляет сертификат, если до его истечения осталось больше 20 дней (задается в конфигурации)
+        /// Если сертификат не обновлен то возвращается 204 No Content
+        /// 
+        /// Для принудительного обновления  нужно указать парамтер force=true в Query запроса
+        /// 
         /// </summary>
         /// <param name="req">HTTP-request, предоставляется Host'ом</param>
         /// <param name="name">Имя сертификата для обновления в конфигурации приложенрия</param>
