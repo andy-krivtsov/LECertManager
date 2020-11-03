@@ -2,9 +2,7 @@
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Azure.Security.KeyVault.Certificates;
 using LECertManager.Configuration;
-using LECertManager.Exceptions;
 using LECertManager.Models;
 using LECertManager.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -19,19 +17,17 @@ namespace LECertManager
     // ReSharper disable once InconsistentNaming
     public class LECertificateManager
     {
-        private readonly KeyVaultService keyVaultService;
-        private readonly AcmeService acmeService;
+        private readonly CertificateService certificateService;
         private readonly ILogger<LECertificateManager> logger;
         private readonly AppSettings settings;
 
-        public LECertificateManager(KeyVaultService keyVaultService,
-                AcmeService acmeService,
+        public LECertificateManager(
+                CertificateService certificateService,
                 ILogger<LECertificateManager> logger,
                 IOptions<AppSettings> options
             )
         {
-            this.keyVaultService = keyVaultService;
-            this.acmeService = acmeService;
+            this.certificateService = certificateService;
             this.logger = logger;
             this.settings = options.Value;
         }
@@ -51,12 +47,18 @@ namespace LECertManager
         {
             try
             {
-                var cert = await GetCertificateInternal(name);
+                var cert = await certificateService.GetCertificateAsync(name);
                 return new OkObjectResult(new CertificateDto(name, cert));
             }
-            catch (RequestProcessingException e)
-            {    
-                return new ObjectResult(e.Message) {StatusCode = (int) e.StatusCode};
+            catch (ArgumentException e)
+            {
+                return new ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.BadRequest};
+            }
+            catch (Exception e)
+            {
+                return new ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.InternalServerError};
             }
         }
 
@@ -78,12 +80,13 @@ namespace LECertManager
         {
             try
             {
-                var cert = await GetCertificateInternal(name);
-                logger.LogInformation("Certificate {certificateName} found, expiration date: {expirationData}", name, cert.Properties.ExpiresOn);
+                var cert = await certificateService.GetCertificateAsync(name);
+                logger.LogInformation("Certificate {certificateName} found, expiration date: {expirationData}",
+                    name, cert.Properties.ExpiresOn);
 
                 var resultCode = HttpStatusCode.OK;
                 
-                if(IsExpired(cert.Properties.ExpiresOn,TimeSpan.Zero))
+                if(certificateService.IsExpired(cert,TimeSpan.Zero))
                 {
                     logger.LogWarning("Certificate {certificateName} expired! Return false (403)!");
                     resultCode = HttpStatusCode.Forbidden;
@@ -91,9 +94,15 @@ namespace LECertManager
                 
                 return new ObjectResult(new CertificateDto(name, cert)) {StatusCode = (int)resultCode};
             }
-            catch (RequestProcessingException e)
-            {    
-                return new ObjectResult(e.Message) {StatusCode = (int) e.StatusCode};
+            catch (ArgumentException e)
+            {
+                return new ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.BadRequest};
+            }
+            catch (Exception e)
+            {
+                return new ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.InternalServerError};
             }
         }
         
@@ -118,23 +127,35 @@ namespace LECertManager
         {
             try
             {
-                const string forceParam = "force";
-                bool isForce = false;
-
-                if (req.Query.ContainsKey(forceParam) && !bool.TryParse(req.Query[forceParam], out isForce))
-                    throw new RequestProcessingException($"Invalid value of the query string \"force\" parameter!", HttpStatusCode.BadRequest);
-                
-                var newCert = await UpdateCertificateInternalAsync(name, isForce);
+                var newCert = await certificateService.UpdateCertificateAsync(name, IsForceParam(req));
 
                 if (newCert == null)
                     return new NoContentResult();
 
-                return new ObjectResult(new CertificateDto(name, newCert)) {StatusCode = (int) HttpStatusCode.OK};
+                return new ObjectResult(new CertificateDto(name, newCert)) 
+                    {StatusCode = (int) HttpStatusCode.OK};
             }
-            catch (RequestProcessingException e)
-            {    
-                return new ObjectResult(e.Message) {StatusCode = (int) e.StatusCode};
+            catch (ArgumentException e)
+            {
+                return new ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.BadRequest};
             }
+            catch (Exception e)
+            {
+                return new ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.InternalServerError};
+            }
+        }
+
+        internal bool IsForceParam(HttpRequest req)
+        {
+            const string forceParam = "force";
+            bool isForce = false;
+
+            if (req.Query.ContainsKey(forceParam) && !bool.TryParse(req.Query[forceParam], out isForce))
+                throw new ArgumentException($"Invalid value of the query string \"force\" parameter!");
+
+            return isForce;
         }
         
         /// <summary>
@@ -154,7 +175,7 @@ namespace LECertManager
                 {
                     logger.LogInformation("Interval Check & Update certificate {certificateName}", certInfo.Name);
 
-                    await UpdateCertificateInternalAsync(certInfo.Name, false);
+                    await certificateService.UpdateCertificateAsync(certInfo.Name, false);
                 }
                 catch (Exception e)
                 {
@@ -163,81 +184,6 @@ namespace LECertManager
             }
             
             logger.LogInformation("Interval certificates update completed!");
-        }
-
-        /// <summary>
-        /// Реализация обновления сертификата в KeyVault.
-        /// Если force == false, то перед обновлением проверяется дата истечения существующего сертификата
-        /// и сертификат обновляется только если он истек или истечет в течении 20 дней (параметр в кон-ии)  
-        /// </summary>
-        /// <param name="name">Имя сертификата в конфигурации</param>
-        /// <param name="isForce">Если true - принудительно обновлять</param>
-        /// <returns>Новый сертификат (объект KeyVaultCertificateWithPolicy) либо null, если не обновился</returns>
-        /// <exception cref="RequestProcessingException">В случае проверяемых ошибок</exception>
-        protected async Task<KeyVaultCertificateWithPolicy> UpdateCertificateInternalAsync(string name, bool isForce = false)
-        {
-            var certInfo = settings.Certificates.FirstOrDefault(x => x.Name.Equals(name));
-            if (certInfo == null)
-                throw new RequestProcessingException($"Certificate {name} not found in configuration!", HttpStatusCode.NotFound);
-            
-            //Проверить, нужно ли заменять существующий сертификат, если не установлен флаг Force 
-            if (!isForce)
-            {
-                var oldCert = await keyVaultService.GetCertificateAsync(certInfo.KvCertName, certInfo.KeyVault.Uri);
-                if (oldCert != null)
-                {
-                    logger.LogInformation("Certificate {certificateName} found, expiration date: {expirationData}", 
-                        name, oldCert.Properties.ExpiresOn);
-
-                    if(!IsExpired(oldCert.Properties.ExpiresOn,TimeSpan.FromDays(settings.RenewalBeforeExpireDays)))
-                        return null;
-                }
-            }
-
-            //Получить новый сертификат от LE
-            var newCertPfx = await acmeService.RequestCertificateAsync(certInfo);
-
-            //Загрузить его в KeyVault
-            await keyVaultService.UploadCertificateAsync(certInfo.KvCertName, 
-                certInfo.KeyVault.Uri, 
-                newCertPfx, 
-                certInfo.PfxPassword);
-
-            //Получить его из KV обратно
-            var newCert = await GetCertificateInternal(name);
-
-            return newCert;
-        }
-        
-        /// <summary>
-        /// Реализация получения сертификата из KeyVault
-        /// </summary>
-        /// <param name="name">Имя сертификата в конфигурации</param>
-        /// <returns></returns>
-        /// <exception cref="RequestProcessingException">Выявленные ошибки в процессе</exception>
-        protected async Task<KeyVaultCertificateWithPolicy> GetCertificateInternal(string name)
-        {
-            if(string.IsNullOrWhiteSpace(name))
-                throw new RequestProcessingException("Certificate name can't be empty!", HttpStatusCode.BadRequest);
-            
-            var certInfo = settings.Certificates.FirstOrDefault(x => x.Name == name);
-            if (certInfo == null)
-                throw new RequestProcessingException($"Certificate {name} not found in the configuration!", HttpStatusCode.NotFound);
-
-            var cert = await keyVaultService.GetCertificateAsync(certInfo.KvCertName, certInfo.KeyVault.Uri);
-            if (cert == null)
-            {
-                logger.LogError("Certificate {certificateName} found, but can't get it from the KeyVault!", name);
-                
-                throw new RequestProcessingException($"Can't get certificate from the KeyVault", HttpStatusCode.ServiceUnavailable);
-            }
-
-            return cert;
-        }
-
-        protected static bool IsExpired(DateTimeOffset? expTime, TimeSpan buffer)
-        {
-            return expTime?.Subtract(DateTime.Now) <= buffer;
         }
     }
 }

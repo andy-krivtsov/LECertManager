@@ -41,8 +41,6 @@ namespace LECertManager.Services
 
         public async Task<AcmeContext> NewAcmeContextAsync(Uri acmeServerUri)
         {
-            logger.LogInformation("Create new ACME account, server: {serverUri}", acmeServerUri);
-
             AcmeContext acmtCtx;
             
             var accountKey = await keyCache.GetAccountKey();
@@ -50,12 +48,16 @@ namespace LECertManager.Services
             {
                 acmtCtx = new AcmeContext(acmeServerUri, accountKey);
                 await acmtCtx.Account();
+                
+                logger.LogInformation("Created ACME account from cached key, server: {serverUri}", acmeServerUri);
             }
             else
             {
                 acmtCtx = new AcmeContext(acmeServerUri);
                 await acmtCtx.NewAccount(settings.AcmeAccount.Email, true);
                 await keyCache.SaveAccountKey(acmtCtx.AccountKey);
+                
+                logger.LogInformation("Created new ACME account, server: {serverUri}", acmeServerUri);
             }                
             
             return acmtCtx;

@@ -70,6 +70,7 @@ namespace LECertManager
             builder.Services.AddTransient<AcmeService>();
             builder.Services.AddTransient<IDnsServiceConnector, AzureDnsConnector>();
             builder.Services.AddTransient<IAcmeChallengeHandler, AcmeDnsChallengeHandler>();
+            builder.Services.AddTransient<CertificateService>();
         }
     }
 }
