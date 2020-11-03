@@ -10,6 +10,7 @@ namespace LECertManager.Services
     {
         public int Priority { get; }
 
-        public Task<Challenge> DoChallengeAsync(IAuthorizationContext authCtx, IAcmeContext acmeCtx, CertificateInfo certificateInfo);
+        public Task<Challenge> DoChallengeAsync(IAuthorizationContext authCtx, IAcmeContext acmeCtx, 
+            IOrderContext orderCtx, CertificateInfo certificateInfo);
     }
 }

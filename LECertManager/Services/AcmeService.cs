@@ -100,7 +100,7 @@ namespace LECertManager.Services
                 
                 foreach (var handler in challengeHandlers.OrderBy(x => x.Priority))
                 {
-                    challenge = await handler.DoChallengeAsync(authCtx, acmeCtx, certInfo);
+                    challenge = await handler.DoChallengeAsync(authCtx, acmeCtx, orderCtx, certInfo);
                     if (challenge != null)
                         break;
                 }

@@ -23,7 +23,8 @@ namespace LECertManager.Services
             this.dnsConnectors = dnsConnectors;
         }
         
-        public async Task<Challenge> DoChallengeAsync(IAuthorizationContext authCtx, IAcmeContext acmeCtx, CertificateInfo certificateInfo)
+        public async Task<Challenge> DoChallengeAsync(IAuthorizationContext authCtx, IAcmeContext acmeCtx,
+            IOrderContext orderCtx, CertificateInfo certificateInfo)
         {
             try
             {
@@ -43,7 +44,8 @@ namespace LECertManager.Services
                 if(connector == null)
                     throw new InvalidOperationException($"Can't find DNS provider {dnsInfo.Provider}");
             
-                await connector.CreateDnsChallengeRecordAsync(domain, acmeCtx.AccountKey.DnsTxt(challenge.Token), dnsInfo);
+                await connector.CreateDnsChallengeRecordAsync(domain, acmeCtx.AccountKey.DnsTxt(challenge.Token), 
+                    dnsInfo, orderCtx.Location.ToString());
 
                 return await challenge.Validate();
             }
