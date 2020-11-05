@@ -66,6 +66,8 @@ namespace LECertManager.Configuration
                 ? WellKnownServers.LetsEncryptStagingV2
                 : WellKnownServers.LetsEncryptV2;
         }
+
+        public bool AutoUpdate { get; set; } = true;
         
         public DnsChallengeInfo DnsChallenge { get; set; }
 
@@ -82,6 +84,8 @@ namespace LECertManager.Configuration
         public KeyVaultInfo KeyVault { get; set; }
         
         public string SecretName { get; set; }
+
+        public int CacheTimeHours { get; set; } = 48;
     }
     
     public class AppSettings

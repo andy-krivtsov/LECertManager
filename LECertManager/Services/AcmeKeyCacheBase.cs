@@ -61,7 +61,7 @@ namespace LECertManager.Services
                 
                 var cachedData = JsonConvert.DeserializeObject<KeyCacheContent>(content);
 
-                return DateTime.Now.Subtract(cachedData.Timestamp).Hours <= 24 ? 
+                return DateTime.Now.Subtract(cachedData.Timestamp).Hours <= settings.AcmeKeyCache.CacheTimeHours ? 
                     KeyFactory.FromPem(cachedData.Key) : null;
             }
             catch (Exception e)

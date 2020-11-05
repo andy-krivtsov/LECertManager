@@ -160,16 +160,16 @@ namespace LECertManager
         
         /// <summary>
         /// Регулярная проверка всех сертификатов и обновление просроченных или близких к этому (за 20 дней, настраивается
-        /// в конфигурации)
-        /// Вызывается в 2:15 каждый день
+        /// в конфигурации). В конфигурации сертификата должно быть autoUpdate == true, для автоматического обновления.
+        /// Вызывается в 01:00 каждый день
         /// </summary>
         /// <param name="myTimer"></param>
         /// <returns></returns>
         [FunctionName("UpdateAllCertificates")]
         public async Task UpdateAllCertificates(
-            [TimerTrigger("0 15 2 * * *")] TimerInfo myTimer)
+            [TimerTrigger("0 0 1 * * *")] TimerInfo myTimer)
         {
-            foreach (var certInfo in settings.Certificates)
+            foreach (var certInfo in settings.Certificates.Where(x => x.AutoUpdate))
             {
                 try
                 {
