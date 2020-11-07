@@ -72,8 +72,8 @@ LECertManager представляет собой _Azure Functions_ прилож
 1. Создать Azure Key Vault (если его еще нет)
 2. Создать Azure Function App в тенанте, где размещаются Key Vault (при этом будет создан Azure Storage Account)
 3. Настроить через Azure DevOps (или другой CI/CD) публикацию из репозитория приложения в этот Application.
-   При настройке публикции в продакшен нужно устанавливать обновления из ветки Master и только с тегами (refs/tags/v*)
-   https://mechanus-lab@dev.azure.com/mechanus-lab/LE-Cert-Manager/_git/LECertManager 
+   При настройке публикции в продакшен нужно устанавливать обновления из ветки Master
+   https://github.com/andy-krivtsov/LECertManager.git
 4. Сделать в созданном Storage Accout контейнер для размщеения конфигурации приложения
 5. Создать файл конфигурации (см. пример ниже) и положить его в созданный контейнер. В файле конфигурации указать доступы к Key Vault и Azure DNS. 
 6. Создать SAS-сигнатуру для чтения конфиуграции 
