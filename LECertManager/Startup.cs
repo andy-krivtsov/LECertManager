@@ -1,10 +1,16 @@
 ﻿using System;
 using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using LECertManager.Configuration;
 using LECertManager.Services;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Strathweb.AspNetCore.AzureBlobFileProvider;
 
 [assembly: FunctionsStartup(typeof(LECertManager.Startup))]
@@ -16,6 +22,9 @@ namespace LECertManager
         public const string ConfigStorageUriVar = "ConfigStorageUri";
         public const string ConfigStorageSasVar = "ConfigStorageSas";
         public const string ConfigStorageContainerVar = "ConfigStorageContainer";
+
+        public const string ConfigFileName = "appsettings.json";
+        public const string ConfigFileNameLocal = "appsettings.local.json";
             
         /// <summary>
         /// Конфигурация загружается из переменных окружения
@@ -41,18 +50,20 @@ namespace LECertManager
                 string.IsNullOrWhiteSpace(confContainer))
             {
                 builder.ConfigurationBuilder
-                    .AddJsonFile(Path.Combine(context.ApplicationRootPath, "appsettings.local.json"), false, false)
+                    .AddJsonFile(Path.Combine(context.ApplicationRootPath, ConfigFileNameLocal), false, false)
                     .AddEnvironmentVariables();
             }
             else
             {
+                CheckConfigurationBlob(new Uri(confUri), confContainer, confSas).Wait();
+                
                 var blobOptions = new AzureBlobOptions
                     {BaseUri = new Uri(confUri), Token = confSas, DocumentContainer = confContainer};
                 
                 var azureBlobFileProvider = new AzureBlobFileProvider(blobOptions);
                 
                 builder.ConfigurationBuilder
-                    .AddJsonFile(azureBlobFileProvider,"appsettings.json", false, false)
+                    .AddJsonFile(azureBlobFileProvider,ConfigFileName, false, false)
                     .AddEnvironmentVariables();
             }
         }
@@ -71,6 +82,47 @@ namespace LECertManager
             builder.Services.AddTransient<IDnsServiceConnector, AzureDnsConnector>();
             builder.Services.AddTransient<IAcmeChallengeHandler, AcmeDnsChallengeHandler>();
             builder.Services.AddTransient<CertificateService>();
+        }
+
+        protected async Task CheckConfigurationBlob(Uri blobUri, string containerName, string blobSas)
+        {
+            string conStr = $"BlobEndpoint={blobUri};SharedAccessSignature={blobSas}";
+            var container = new BlobContainerClient(conStr, containerName);
+
+            await container.CreateIfNotExistsAsync(PublicAccessType.None);
+
+            var blobClient = container.GetBlobClient(ConfigFileName);
+
+            if (await blobClient.ExistsAsync())
+                return;
+            
+            string content = JsonConvert.SerializeObject(GetDefaultSettings(), new JsonSerializerSettings()
+            {
+                Formatting = Formatting.Indented,
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            });
+
+            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(content)))
+            {
+                
+                await blobClient.UploadAsync(stream, new BlobHttpHeaders()
+                {
+                    ContentType = "application/json"
+                });
+            }
+        }
+
+        protected object GetDefaultSettings()
+        {
+            return new {
+                AppSettings = new AppSettings()
+                {
+                    AcmeAccount = new AcmeAccountInfo()
+                    {
+                        Email = "admin@contoso.com"
+                    }
+                }
+            };
         }
     }
 }
