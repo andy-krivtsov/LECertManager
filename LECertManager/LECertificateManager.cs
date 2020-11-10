@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using LECertManager.Configuration;
+using LECertManager.Exceptions;
 using LECertManager.Models;
 using LECertManager.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -50,15 +51,9 @@ namespace LECertManager
                 var cert = await certificateService.GetCertificateAsync(name);
                 return new OkObjectResult(new CertificateDto(name, cert));
             }
-            catch (ArgumentException e)
-            {
-                return new ObjectResult(e.GetType() + ": " + e.Message)
-                    {StatusCode = (int) HttpStatusCode.BadRequest};
-            }
             catch (Exception e)
             {
-                return new ObjectResult(e.GetType() + ": " + e.Message)
-                    {StatusCode = (int) HttpStatusCode.InternalServerError};
+                return ProcessException(e);
             }
         }
 
@@ -85,24 +80,18 @@ namespace LECertManager
                     name, cert.Properties.ExpiresOn);
 
                 var resultCode = HttpStatusCode.OK;
-                
-                if(certificateService.IsExpired(cert,TimeSpan.Zero))
+
+                if (certificateService.IsExpired(cert, TimeSpan.Zero))
                 {
                     logger.LogWarning("Certificate {certificateName} expired! Return false (403)!");
                     resultCode = HttpStatusCode.Forbidden;
                 }
-                
-                return new ObjectResult(new CertificateDto(name, cert)) {StatusCode = (int)resultCode};
-            }
-            catch (ArgumentException e)
-            {
-                return new ObjectResult(e.GetType() + ": " + e.Message)
-                    {StatusCode = (int) HttpStatusCode.BadRequest};
+
+                return new ObjectResult(new CertificateDto(name, cert)) {StatusCode = (int) resultCode};
             }
             catch (Exception e)
             {
-                return new ObjectResult(e.GetType() + ": " + e.Message)
-                    {StatusCode = (int) HttpStatusCode.InternalServerError};
+                return ProcessException(e);
             }
         }
         
@@ -135,19 +124,34 @@ namespace LECertManager
                 return new ObjectResult(new CertificateDto(name, newCert)) 
                     {StatusCode = (int) HttpStatusCode.OK};
             }
-            catch (ArgumentException e)
-            {
-                return new ObjectResult(e.GetType() + ": " + e.Message)
-                    {StatusCode = (int) HttpStatusCode.BadRequest};
-            }
             catch (Exception e)
             {
-                return new ObjectResult(e.GetType() + ": " + e.Message)
-                    {StatusCode = (int) HttpStatusCode.InternalServerError};
+                return ProcessException(e);
             }
         }
 
-        internal bool IsForceParam(HttpRequest req)
+        protected IActionResult ProcessException(Exception e)
+        {
+            ObjectResult ret;
+            
+            if (e is CertificateNotFoundException)
+            {
+                ret = new ObjectResult(e.Message) {StatusCode = (int) HttpStatusCode.NotFound};
+            }else if (e is ArgumentException)
+            {
+                ret = new ObjectResult(e.GetType() + ": " + e.Message) 
+                    {StatusCode = (int) HttpStatusCode.BadRequest};
+            }
+            else
+            {
+                ret = new  ObjectResult(e.GetType() + ": " + e.Message)
+                    {StatusCode = (int) HttpStatusCode.InternalServerError};
+            }
+
+            return ret;
+        }
+
+        protected bool IsForceParam(HttpRequest req)
         {
             const string forceParam = "force";
             bool isForce = false;

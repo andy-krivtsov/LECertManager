@@ -23,7 +23,7 @@
         "sasParams": {
             "signedServices": "b",
             "signedPermission": "rl",
-            "signedExpiry": "2030-01-01T00:00:00Z",
+            "signedExpiry": "2029-01-01",
             "signedResourceTypes": "c"
         }
      },
@@ -145,8 +145,8 @@
                             "value": "[concat('https://', variables('storageName'),'.blob.core.windows.net/')]"
                         },
                         {
-                            "name": "ConfigStorageSas",
-                            "value": "[listAccountSas(variables('storageId'),'2019-06-01',variables('sasParams')).accountSasToken]"
+                            "name": "ConfigStorageKey",
+                            "value": "[listKeys(variables('storageId'),'2019-06-01',variables('sasParams')).keys[0].value]"
                         },
                         {
                             "name": "ConfigStorageContainer",

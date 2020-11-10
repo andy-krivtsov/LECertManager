@@ -19,10 +19,6 @@ namespace LECertManager
 {
     public class Startup : FunctionsStartup
     {
-        public const string ConfigStorageUriVar = "ConfigStorageUri";
-        public const string ConfigStorageSasVar = "ConfigStorageSas";
-        public const string ConfigStorageContainerVar = "ConfigStorageContainer";
-
         public const string ConfigFileName = "appsettings.json";
         public const string ConfigFileNameLocal = "appsettings.local.json";
             
@@ -41,13 +37,9 @@ namespace LECertManager
             FunctionsHostBuilderContext context = builder.GetContext();
             
             //Get enviroment variables for config file access
-            var confUri = Environment.GetEnvironmentVariable(ConfigStorageUriVar);
-            var confSas = Environment.GetEnvironmentVariable(ConfigStorageSasVar);
-            var confContainer = Environment.GetEnvironmentVariable(ConfigStorageContainerVar);
-
-            if (string.IsNullOrWhiteSpace(confUri) ||
-                string.IsNullOrWhiteSpace(confSas) ||
-                string.IsNullOrWhiteSpace(confContainer))
+            var configStorage = new ConfigStorageAccess();
+            
+            if (!configStorage.Configured)
             {
                 builder.ConfigurationBuilder
                     .AddJsonFile(Path.Combine(context.ApplicationRootPath, ConfigFileNameLocal), false, false)
@@ -55,12 +47,13 @@ namespace LECertManager
             }
             else
             {
-                CheckConfigurationBlob(new Uri(confUri), confContainer, confSas).Wait();
+                CheckConfigurationBlob(configStorage).Wait();
                 
-                var blobOptions = new AzureBlobOptions
-                    {BaseUri = new Uri(confUri), Token = confSas, DocumentContainer = confContainer};
-                
-                var azureBlobFileProvider = new AzureBlobFileProvider(blobOptions);
+                var azureBlobFileProvider = new AzureBlobFileProvider(new AzureBlobOptions()
+                {
+                    ConnectionString = configStorage.ConnectionString, 
+                    DocumentContainer = configStorage.ContainerName
+                });
                 
                 builder.ConfigurationBuilder
                     .AddJsonFile(azureBlobFileProvider,ConfigFileName, false, false)
@@ -84,15 +77,12 @@ namespace LECertManager
             builder.Services.AddTransient<CertificateService>();
         }
 
-        protected async Task CheckConfigurationBlob(Uri blobUri, string containerName, string blobSas)
+        protected async Task CheckConfigurationBlob(ConfigStorageAccess configStorage)
         {
-            string conStr = $"BlobEndpoint={blobUri};SharedAccessSignature={blobSas}";
-            var container = new BlobContainerClient(conStr, containerName);
-
+            var container = new BlobContainerClient(configStorage.ConnectionString, configStorage.ContainerName);
             await container.CreateIfNotExistsAsync(PublicAccessType.None);
 
             var blobClient = container.GetBlobClient(ConfigFileName);
-
             if (await blobClient.ExistsAsync())
                 return;
             

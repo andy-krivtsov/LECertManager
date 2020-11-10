@@ -98,7 +98,7 @@ namespace LECertManager.Services
             
             var certInfo = settings.Certificates.FirstOrDefault(x => x.Name.Equals(name));
             if (certInfo == null)
-                throw new ArgumentException($"Certificate {name} not found in the configuration!");
+                throw new CertificateNotFoundException(name);
 
             return certInfo;
         }
