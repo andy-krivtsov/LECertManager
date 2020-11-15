@@ -49,6 +49,10 @@ namespace LECertManager
             try
             {
                 var cert = await certificateService.GetCertificateAsync(name);
+                
+                logger.LogInformation("Certificate {certificateName} found, subject: {subject}, expiration date: {expirationData}", 
+                    name, cert.Policy.Subject, cert.Properties.ExpiresOn);
+                
                 return new OkObjectResult(new CertificateDto(name, cert));
             }
             catch (Exception e)
@@ -86,6 +90,8 @@ namespace LECertManager
                     logger.LogWarning("Certificate {certificateName} expired! Return false (403)!");
                     resultCode = HttpStatusCode.Forbidden;
                 }
+                
+                logger.LogInformation($"Function return code: {resultCode}");
 
                 return new ObjectResult(new CertificateDto(name, cert)) {StatusCode = (int) resultCode};
             }
@@ -119,7 +125,13 @@ namespace LECertManager
                 var newCert = await certificateService.UpdateCertificateAsync(name, IsForceParam(req));
 
                 if (newCert == null)
+                {
+                    logger.LogInformation("Certificate is not expired, no update needed!");
                     return new NoContentResult();
+                }
+                
+                logger.LogInformation("Certificate {certificateName} updated, subject: {subject}, expiration date: {expirationData}", 
+                    name, newCert.Policy.Subject, newCert.Properties.ExpiresOn);
 
                 return new ObjectResult(new CertificateDto(name, newCert)) 
                     {StatusCode = (int) HttpStatusCode.OK};
@@ -147,6 +159,8 @@ namespace LECertManager
                 ret = new  ObjectResult(e.GetType() + ": " + e.Message)
                     {StatusCode = (int) HttpStatusCode.InternalServerError};
             }
+            
+            logger.LogError(e, $"Error in function (return code: {ret.StatusCode}): {e.Message}");
 
             return ret;
         }

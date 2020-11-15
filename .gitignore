@@ -8,3 +8,9 @@ riderModule.iml
 **/.idea/*
 *.sln.iml
 **/.vscode/*
+
+#Configurations
+**/MgrConfigFiles/*
+
+
+
