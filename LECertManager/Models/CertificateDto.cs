@@ -13,7 +13,9 @@ namespace LECertManager.Models
         public string Thumbprint { get; set; }
         public Uri Id { get; set; }
         public string Subject { get; set; }
-        public IEnumerable<string> SubjectAlternativeNames { get; set; } 
+        public IEnumerable<string> SubjectAlternativeNames { get; set; }
+        
+        public string IssuerName { get; set; }
         public int? KeySize { get; set; }
         public IEnumerable<string> KeyUsage { get; set; } 
         public DateTimeOffset? Created { get; set; }
@@ -45,6 +47,7 @@ namespace LECertManager.Models
             NotBefore = cert.Properties.NotBefore;
             Updated = cert.Properties.UpdatedOn;
             Enabled = cert.Properties.Enabled;
+            IssuerName = cert.Policy.IssuerName;
         }
     }
 }
