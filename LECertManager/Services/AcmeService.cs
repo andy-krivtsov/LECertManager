@@ -94,6 +94,7 @@ namespace LECertManager.Services
             logger.LogInformation("Requesting new LE certificate: {certificateRequest}", new
             {
                 certInfo.Name,
+                Sever = certInfo.AcmeServer,
                 Domains = string.Join(",",certInfo.Domains)
             });
             
