@@ -16,11 +16,13 @@ namespace LECertManager.Services
         {
         }
 
-        public override async Task WriteCacheData(string data)
+        public override async Task WriteCacheData(string data, string serverAlias)
         {
             var filePath = Environment.ExpandEnvironmentVariables(settings.AcmeKeyCache?.FilePath ?? "");
             if (filePath == "")
                 return;
+
+            filePath += "." + serverAlias;
             
             logger.LogInformation("Try to save account key to file: {path}",filePath);
 
@@ -29,12 +31,14 @@ namespace LECertManager.Services
             await File.WriteAllTextAsync(filePath,data);
         }
 
-        public override async Task<string> ReadCacheData()
+        public override async Task<string> ReadCacheData(string serverAlias)
         {
             var filePath = Environment.ExpandEnvironmentVariables(settings.AcmeKeyCache?.FilePath ?? "");
+            filePath += "." + serverAlias;
+            
             if (filePath == "" || !File.Exists(filePath))
                 return null;
-
+            
             logger.LogInformation("Try to read account key from file: {path}",filePath);
             
             return await File.ReadAllTextAsync(filePath);

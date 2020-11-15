@@ -16,13 +16,15 @@ namespace LECertManager.Services
             this.keyVaultService = keyVaultService;
         }
 
-        public override async Task WriteCacheData(string data)
+        public override async Task WriteCacheData(string data, string serverAlias)
         {
             Uri uri = settings.AcmeKeyCache?.KeyVault?.Uri;
             string secretName = settings.AcmeKeyCache?.SecretName;
 
             if (uri == null || string.IsNullOrWhiteSpace(secretName))
                 return;
+
+            secretName += "-" + serverAlias;
             
             logger.LogInformation("Try to save account key to KeyVault: name={secretName}, uri={kvUri}",
                 secretName, uri.ToString());
@@ -30,13 +32,15 @@ namespace LECertManager.Services
             await keyVaultService.SetSecretAsync(secretName, data, uri);
         }
 
-        public override async Task<string> ReadCacheData()
+        public override async Task<string> ReadCacheData(string serverAlias)
         {
             Uri uri = settings.AcmeKeyCache?.KeyVault?.Uri;
             string secretName = settings.AcmeKeyCache?.SecretName;
 
             if (uri == null || string.IsNullOrWhiteSpace(secretName))
                 return null;
+            
+            secretName += "-" + serverAlias;
             
             logger.LogInformation("Try to read account key from KeyVault: name={secretName}, uri={kvUri}",
                 secretName, uri.ToString());

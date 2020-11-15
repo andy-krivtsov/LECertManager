@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Azure.Identity;
@@ -16,6 +17,8 @@ using Certes.Pkcs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.X509;
 using Authorization = Certes.Acme.Resource.Authorization;
 
 namespace LECertManager.Services
@@ -38,34 +41,52 @@ namespace LECertManager.Services
             this.challengeHandlers = challengeHandlers;
             this.settings = options.Value;
         }
-
-        public async Task<AcmeContext> NewAcmeContextAsync(Uri acmeServerUri)
+        
+        protected Uri GetAcmeServerUri(string serverAlias)
         {
-            AcmeContext acmtCtx;
+            if (serverAlias.Equals("staging", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return WellKnownServers.LetsEncryptStagingV2;
+            }
+            else if (serverAlias.Equals("production", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return WellKnownServers.LetsEncryptV2;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public async Task<AcmeContext> NewAcmeContextAsync(string serverAlias)
+        {
+            Uri acmeServerUri = GetAcmeServerUri(serverAlias);
             
-            var accountKey = await keyCache.GetAccountKey();
+            AcmeContext acmeCtx;
+            
+            var accountKey = await keyCache.GetAccountKey(serverAlias);
             if (accountKey != null)
             {
-                acmtCtx = new AcmeContext(acmeServerUri, accountKey);
-                await acmtCtx.Account();
+                acmeCtx = new AcmeContext(acmeServerUri, accountKey);
+                await acmeCtx.Account();
                 
                 logger.LogInformation("Created ACME account from cached key, server: {serverUri}", acmeServerUri);
             }
             else
             {
-                acmtCtx = new AcmeContext(acmeServerUri);
-                await acmtCtx.NewAccount(settings.AcmeAccount.Email, true);
-                await keyCache.SaveAccountKey(acmtCtx.AccountKey);
+                acmeCtx = new AcmeContext(acmeServerUri);
+                await acmeCtx.NewAccount(settings.AcmeAccount.Email, true);
+                await keyCache.SaveAccountKey(acmeCtx.AccountKey, serverAlias);
                 
                 logger.LogInformation("Created new ACME account, server: {serverUri}", acmeServerUri);
             }                
             
-            return acmtCtx;
+            return acmeCtx;
         }
 
         public async Task<byte[]> RequestCertificateAsync(CertificateInfo certInfo)
         {
-            return await RequestCertificateAsync(certInfo, await NewAcmeContextAsync(certInfo.AcmeServerUri));
+            return await RequestCertificateAsync(certInfo, await NewAcmeContextAsync(certInfo.AcmeServer));
         }
 
         public async Task<byte[]> RequestCertificateAsync(CertificateInfo certInfo, AcmeContext acmeCtx)
@@ -131,7 +152,23 @@ namespace LECertManager.Services
 
             //Получаем цепочку сертификатов и возвращаем ее виде PFX-файла
             var certChain = await orderCtx.Download();
+            LogNewCertificateInfo(certChain);
+            
             return certChain.ToPfx(csrBuilder.Key).Build(certificateInfo.CommonName, certificateInfo.PfxPassword);
+        }
+
+        protected void LogNewCertificateInfo(CertificateChain certificateChain)
+        {
+            var certParser = new X509CertificateParser();
+            var x509Cert = certParser.ReadCertificate(Encoding.UTF8.GetBytes(certificateChain.Certificate.ToPem()));
+            
+            logger.LogInformation("Received new certificate: {certData}", new
+                {    
+                    Subject = x509Cert.SubjectDN,
+                    Expires = x509Cert.NotAfter,
+                    Issuer = x509Cert.IssuerDN,
+                    SubjAltNames = string.Join(",", x509Cert.GetSubjectAlternativeNames().Cast<ArrayList>().Select(x => x[1]))
+                });
         }
 
         protected async Task WaitValidationAsync(IOrderContext orderCtx)

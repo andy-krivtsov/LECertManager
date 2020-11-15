@@ -46,7 +46,7 @@ namespace LECertManager.Services
 
             var newRecordSet = new RecordSet()
             {
-                TTL = 3600,
+                TTL = 0,
                 TxtRecords =
                 {
                     new TxtRecord() {Value = {value}}
@@ -89,6 +89,9 @@ namespace LECertManager.Services
                 RecordType.TXT,
                 newRecordSet
             );
+
+            //Wait 15 secs after any update DNS
+            await Task.Delay(TimeSpan.FromSeconds(10));
         }
     }
 }

@@ -27,16 +27,16 @@ namespace LECertManager.Services
             this.settings = options.Value;
         }
 
-        public abstract Task WriteCacheData(string data);
-        public abstract Task<string> ReadCacheData();
+        public abstract Task WriteCacheData(string data, string serverAlias);
+        public abstract Task<string> ReadCacheData(string serverAlias);
 
-        public async Task SaveAccountKey(IKey key)
+        public async Task SaveAccountKey(IKey key, string serverAlias)
         {
             string pemKey = key?.ToPem();
             if(pemKey == null)
                 throw  new ArgumentNullException(nameof(key));
 
-            var oldContent = await ReadCacheData();
+            var oldContent = await ReadCacheData(serverAlias);
             if (!string.IsNullOrWhiteSpace(oldContent))
             {
                 var cachedData = JsonConvert.DeserializeObject<KeyCacheContent>(oldContent);
@@ -48,14 +48,14 @@ namespace LECertManager.Services
                 new KeyCacheContent() { Key = pemKey, Timestamp =  DateTime.Now },
                 Formatting.None);
 
-            await WriteCacheData(content);
+            await WriteCacheData(content, serverAlias);
         }
 
-        public async Task<IKey> GetAccountKey()
+        public async Task<IKey> GetAccountKey(string serverAlias)
         {
             try
             {
-                var content = await ReadCacheData();
+                var content = await ReadCacheData(serverAlias);
                 if (string.IsNullOrWhiteSpace(content))
                     return null;
                 

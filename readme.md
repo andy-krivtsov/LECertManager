@@ -56,18 +56,29 @@ LECertManager представляет собой _Azure Functions_ прилож
  файл _appsettings.json_ должен находиться в Azure Storage Blob, путь к которому указывают три переменных окружения
 (для Azure Funcions они задаются через Application Configuration)
 
-* ConfigStorageUri  (URI Storage-аккаунта)
-* ConfigStorageSas  (SAS для доступа)
-* ConfigStorageContainer  (имя BLOB конейтейнера)
+* **ConfigStorageUri**  (URI Storage-аккаунта)
+* **ConfigStorageSas**  (SAS для доступа к storage) или **ConfigStorageKey**  (Key для доступа к storage)
+* **ConfigStorageContainer**  (имя BLOB конейтейнера)
 
 Если хотя бы одна из этих переменных не задана, то загружается файл _appsettings.local.json_ (опция для локального запуска при разработке)
 
 ### Развертывание приложения 
-Приложение пока полагается только на использование _Azure Managed Service Identities (MSI)_ для доступа к Key Vault, поэтому должно быть развернуто
-в том же тенанте, где находится Key Vault для хранения сертификатов.
+Приложение пока полагается только на использование _Azure Managed Service Identities (MSI)_ для доступа к Key Vault и доступа к DNS записям (для Azure DNS), поэтому должно быть развернуто
+в том же тенанте, где находится Key Vault для хранения сертификатов и объекты DNS-зон для домена
 
-#### Процедура установки
-Ниже упрощенная процедура развертывания
+#### Процедура установки (с помощью шаблона)
+Ниже процедура установки с использование ARM-Template'а. 
+В этом случае создается отдельный KeyVault для менеджера. При необходимости использовать существующий необходимо удалить созданный, указать существующий в файле конфигурации и создать политику доступа к MSI приложния 
+1. Создать ресурсную группу (напрмер LECertManager)
+2. Выполнить развертывание менеджера из ARM-Template. Необходимо указать нужны  namePrefix в файле с параметрами шаблона
+PowerShell команда:
+`New-AzResourceGroupDeployment -Name LE-Mgr-Deploy01 -ResourceGroupName LECertManager -TemplateParameterFile .\le-cert-mgr-params.json -TemplateFile .\le-cert-mgr-template.json -Verbose`
+3. Создать файл конфигурации (пример appsettings.default.json) с именем appsettings.json, и положить его в созаднный Storage Account, в контейнер app-config (заменив созданный пустой) 
+4. Добавить политику для доступа к KeyVault для администратора 
+5. Добавить доступ для MSI приложения к объектам DNS-зон нужных доменов
+ 
+
+#### Процедура установки (ручная)
 
 1. Создать Azure Key Vault (если его еще нет)
 2. Создать Azure Function App в тенанте, где размещаются Key Vault (при этом будет создан Azure Storage Account)

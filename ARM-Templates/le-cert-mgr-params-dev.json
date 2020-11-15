@@ -4,7 +4,7 @@
 
     "parameters": {
         "namePrefix": {
-            "value": "test1"
+            "value": "mc"
         },
 
         "repoUrl": {
