@@ -7,18 +7,20 @@
         },
 
         "repoUrl": {
-            "type": "string"       
+            "type": "string"
         },
 
         "repoBranch": {
             "type": "string"
         }
-      },
-    "variables": { 
+    },
+    "variables": {
         "storageName": "[concat(parameters('namePrefix'), 'certmgrstor')]",
         "storageId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
         "funcAppName": "[concat(parameters('namePrefix'), '-lecert-mgr')]",
         "keyVaultName": "[concat(parameters('namePrefix'), '-lecert-kv')]",
+        "workbookTplName": "[concat(parameters('namePrefix'), '-lecert-workbook-template')]",
+        "workbookId": "16b3eafc-0a7b-426c-9a8b-35e5bb83753b",
         "configContainerName": "app-config",
         "sasParams": {
             "signedServices": "b",
@@ -26,8 +28,8 @@
             "signedExpiry": "2029-01-01",
             "signedResourceTypes": "c"
         }
-     },
-    "functions": [  ],
+    },
+    "functions": [],
     "resources": [
         {
             "type": "Microsoft.KeyVault/vaults",
@@ -36,7 +38,7 @@
             "name": "[variables('keyVaultName')]",
 
             "dependsOn": [
-                    "[resourceId('Microsoft.Web/sites', variables('funcAppName'))]"
+                "[resourceId('Microsoft.Web/sites', variables('funcAppName'))]"
             ],
 
             "properties": {
@@ -47,15 +49,15 @@
                 },
 
                 "enableSoftDelete": true,
-                "softDeleteRetentionInDays": 15,                
+                "softDeleteRetentionInDays": 15,
 
                 "accessPolicies": [
-                    { 
+                    {
                         "tenantId": "[reference(resourceId('Microsoft.Web/sites', variables('funcAppName')), '2018-02-01', 'Full').identity.tenantId]",
                         "objectId": "[reference(resourceId('Microsoft.Web/sites', variables('funcAppName')), '2018-02-01', 'Full').identity.principalId]",
                         "permissions": {
-                            "certificates": [ "create","delete","get","list","import","update" ],
-                            "secrets": [ "list","get","set","delete" ]
+                            "certificates": [ "create", "delete", "get", "list", "import", "update" ],
+                            "secrets": [ "list", "get", "set", "delete" ]
                         }
                     }
                 ]
@@ -64,7 +66,7 @@
         {
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2020-08-01-preview",
-            "name":"[variables('storageName')]",
+            "name": "[variables('storageName')]",
             "kind": "StorageV2",
             "location": "[resourceGroup().location]",
             "sku": {
@@ -81,8 +83,8 @@
                     ],
 
                     "properties": {
-                        "publicAccess": "None"   
-                    }                    
+                        "publicAccess": "None"
+                    }
                 }
             ]
         },
@@ -92,17 +94,17 @@
             "apiVersion": "2018-05-01-preview",
             "kind": "web",
             "location": "[resourceGroup().location]",
-            "name":"[variables('funcAppName')]",
+            "name": "[variables('funcAppName')]",
             "properties": {
                 "Application_Type": "web"
             }
         },
 
-        { 
+        {
             "type": "Microsoft.Web/sites",
             "apiVersion": "2018-11-01",
-            "name":"[variables('funcAppName')]",
-            "location":"[resourceGroup().location]",
+            "name": "[variables('funcAppName')]",
+            "location": "[resourceGroup().location]",
             "kind": "functionapp",
             "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]",
@@ -116,23 +118,23 @@
             "properties": {
                 "siteConfig": {
                     "appSettings": [
-                        { 
+                        {
                             "name": "AzureWebJobsStorage",
                             "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName'), ';AccountKey=', listKeys(variables('storageId'),'2019-06-01').keys[0].value)]"
                         },
-                        { 
+                        {
                             "name": "FUNCTIONS_EXTENSION_VERSION",
                             "value": "~3"
                         },
-                        { 
+                        {
                             "name": "FUNCTIONS_WORKER_RUNTIME",
                             "value": "dotnet"
                         },
-                        { 
+                        {
                             "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
                             "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageName'), ';AccountKey=', listKeys(variables('storageId'),'2019-06-01').keys[0].value)]"
                         },
-                        { 
+                        {
                             "name": "WEBSITE_CONTENTSHARE",
                             "value": "[toLower(variables('funcAppName'))]"
                         },
@@ -157,24 +159,462 @@
             },
 
             "resources": [
-                { 
+                {
                     "type": "sourcecontrols",
                     "apiVersion": "2018-11-01",
-                    "location":"[resourceGroup().location]",
+                    "location": "[resourceGroup().location]",
                     "name": "web",
                     "dependsOn": [
                         "[resourceId('Microsoft.Web/sites', variables('funcAppName'))]",
                         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
                     ],
-                    "properties": {                                               
+                    "properties": {
                         "repoUrl": "[parameters('repoUrl')]",
                         "branch": "[parameters('repoBranch')]",
                         "isManualIntegration": false
                     }
                 }
             ]
+        },
+
+        {
+            "type": "microsoft.insights/workbooktemplates",
+            "apiVersion": "2019-10-17-preview",
+            "name": "[variables('workbookTplName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', variables('funcAppName'))]"
+            ],
+            "properties": {
+                "author": "Andrey Krivtsov",
+                "priority": 1,
+                "galleries": [
+                    {
+                        "name": "Let's Encrypt Manager Monitoring (template)",
+                        "category": "Deployed Templates",
+                        "order": 100,
+                        "type": "workbook",
+                        "resourceType": "Azure Monitor"
+                    }
+                ],
+                "templateData": {
+                    "version": "Notebook/1.0",
+                    "items": [
+                        {
+                        "type": 1,
+                        "content": {
+                            "json": "# Lets Encrypt Certificate Manager Monitoring"
+                        },
+                        "name": "text - 2"
+                        },
+                        {
+                        "type": 12,
+                        "content": {
+                            "version": "NotebookGroup/1.0",
+                            "groupType": "editable",
+                            "loadType": "always",
+                            "items": [
+                            {
+                                "type": 1,
+                                "content": {
+                                "json": "## Exceptions in functions"
+                                },
+                                "name": "text - 4"
+                            },
+                            {
+                                "type": 3,
+                                "content": {
+                                "version": "KqlItem/1.0",
+                                "query": "union exceptions\r\n| order by timestamp desc \r\n| project Timestamp=timestamp, Icon=\"error\", Type=type, Message=outerMessage, Method=method, Category=customDimensions.Category, FmtMessage=customDimensions.FormattedMessage, Function=operation_Name, AppName=appName, itemId",
+                                "size": 1,
+                                "showAnalytics": true,
+                                "timeContext": {
+                                    "durationMs": 86400000
+                                },
+                                "queryType": 0,
+                                "resourceType": "microsoft.insights/components",
+                                "visualization": "table",
+                                "gridSettings": {
+                                    "formatters": [
+                                    {
+                                        "columnMatch": "Timestamp",
+                                        "formatter": 6,
+                                        "formatOptions": {
+                                        "linkColumn": "itemId",
+                                        "linkTarget": "ExceptionDetails",
+                                        "linkIsContextBlade": true,
+                                        "customColumnWidthSetting": "23ch"
+                                        },
+                                        "dateFormat": {
+                                        "showUtcTime": null,
+                                        "formatName": "shortDateTimePattern"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "Icon",
+                                        "formatter": 11
+                                    },
+                                    {
+                                        "columnMatch": "Message",
+                                        "formatter": 1,
+                                        "formatOptions": {
+                                        "customColumnWidthSetting": "50%"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "itemId",
+                                        "formatter": 5,
+                                        "formatOptions": {
+                                        "customColumnWidthSetting": "42ch"
+                                        }
+                                    }
+                                    ],
+                                    "sortBy": [
+                                    {
+                                        "itemKey": "$gen_date_Timestamp_0",
+                                        "sortOrder": 1
+                                    }
+                                    ],
+                                    "labelSettings": [
+                                    {
+                                        "columnId": "Timestamp"
+                                    },
+                                    {
+                                        "columnId": "Icon",
+                                        "label": ""
+                                    },
+                                    {
+                                        "columnId": "Type"
+                                    },
+                                    {
+                                        "columnId": "Message"
+                                    },
+                                    {
+                                        "columnId": "Method"
+                                    },
+                                    {
+                                        "columnId": "Category"
+                                    },
+                                    {
+                                        "columnId": "FmtMessage"
+                                    },
+                                    {
+                                        "columnId": "Function"
+                                    },
+                                    {
+                                        "columnId": "AppName"
+                                    },
+                                    {
+                                        "columnId": "itemId"
+                                    }
+                                    ]
+                                },
+                                "sortBy": [
+                                    {
+                                    "itemKey": "$gen_date_Timestamp_0",
+                                    "sortOrder": 1
+                                    }
+                                ]
+                                },
+                                "showPin": true,
+                                "name": "query - 3",
+                                "styleSettings": {
+                                "showBorder": true
+                                }
+                            }
+                            ]
+                        },
+                        "name": "ExceptionsGroup"
+                        },
+                        {
+                        "type": 12,
+                        "content": {
+                            "version": "NotebookGroup/1.0",
+                            "groupType": "editable",
+                            "loadType": "always",
+                            "items": [
+                            {
+                                "type": 1,
+                                "content": {
+                                "json": "## Functions Logs"
+                                },
+                                "name": "text - 5"
+                            },
+                            {
+                                "type": 9,
+                                "content": {
+                                "version": "KqlParameterItem/1.0",
+                                "parameters": [
+                                    {
+                                    "id": "719235e8-9db3-4c9f-95cc-4692dc28fa01",
+                                    "version": "KqlParameterItem/1.0",
+                                    "name": "TimeRange",
+                                    "label": "Time Ramge",
+                                    "type": 4,
+                                    "isRequired": true,
+                                    "value": {
+                                        "durationMs": 86400000
+                                    },
+                                    "typeSettings": {
+                                        "selectableValues": [
+                                        {
+                                            "durationMs": 300000
+                                        },
+                                        {
+                                            "durationMs": 1800000
+                                        },
+                                        {
+                                            "durationMs": 3600000
+                                        },
+                                        {
+                                            "durationMs": 14400000
+                                        },
+                                        {
+                                            "durationMs": 43200000
+                                        },
+                                        {
+                                            "durationMs": 86400000
+                                        },
+                                        {
+                                            "durationMs": 172800000
+                                        },
+                                        {
+                                            "durationMs": 259200000
+                                        },
+                                        {
+                                            "durationMs": 604800000
+                                        }
+                                        ],
+                                        "allowCustom": true
+                                    },
+                                    "timeContext": {
+                                        "durationMs": 86400000
+                                    }
+                                    },
+                                    {
+                                    "id": "328e7b40-d711-4ad8-96c8-8dca3f65d83a",
+                                    "version": "KqlParameterItem/1.0",
+                                    "name": "LogLevel",
+                                    "label": "Level",
+                                    "type": 2,
+                                    "isRequired": true,
+                                    "typeSettings": {
+                                        "additionalResourceOptions": [],
+                                        "showDefault": false
+                                    },
+                                    "jsonData": "[[\r\n    {\"value\": \"0\", \"label\": \"Verbose\" },\r\n    {\"value\": \"1\", \"label\": \"Information\", \"selected\": true },\r\n    {\"value\": \"2\", \"label\": \"Warning\" },\r\n    {\"value\": \"3\", \"label\": \"Errors\" }\r\n]]",
+                                    "timeContext": {
+                                        "durationMs": 86400000
+                                    }
+                                    }
+                                ],
+                                "style": "above",
+                                "queryType": 0,
+                                "resourceType": "microsoft.insights/components"
+                                },
+                                "name": "parameters - 2"
+                            },
+                            {
+                                "type": 3,
+                                "content": {
+                                "version": "KqlItem/1.0",
+                                "query": "let errorOps =  traces\r\n| where operation_Id <> \"\" and operation_Name <> \"\"\r\n| summarize ErrLevel=max(severityLevel) by operation_Id;\r\ntraces \r\n| where customDimensions.EventId == '1' and customDimensions.EventName == 'FunctionStarted'\r\n| join (errorOps) on operation_Id\r\n| project Timestamp=timestamp, Icon=iff(ErrLevel>1,tostring(ErrLevel),''), FunctionName=operation_Name,Reason=customDimensions.prop__reason,AppName=appName, operation_Id,itemId",
+                                "size": 1,
+                                "showAnalytics": true,
+                                "title": "Function invocations",
+                                "timeContext": {
+                                    "durationMs": 86400000
+                                },
+                                "timeContextFromParameter": "TimeRange",
+                                "exportFieldName": "operation_Id",
+                                "exportParameterName": "functionOpId",
+                                "queryType": 0,
+                                "resourceType": "microsoft.insights/components",
+                                "visualization": "table",
+                                "showExpandCollapseGrid": true,
+                                "gridSettings": {
+                                    "formatters": [
+                                    {
+                                        "columnMatch": "Timestamp",
+                                        "formatter": 6,
+                                        "formatOptions": {
+                                        "linkColumn": "itemId",
+                                        "linkTarget": "TraceDetails",
+                                        "customColumnWidthSetting": "25ch"
+                                        },
+                                        "dateFormat": {
+                                        "showUtcTime": null,
+                                        "formatName": "shortDateTimePattern"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "Icon",
+                                        "formatter": 11
+                                    },
+                                    {
+                                        "columnMatch": "FunctionName",
+                                        "formatter": 1,
+                                        "formatOptions": {
+                                        "customColumnWidthSetting": "15%"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "Reason",
+                                        "formatter": 1,
+                                        "formatOptions": {
+                                        "customColumnWidthSetting": "40%"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "itemId",
+                                        "formatter": 5
+                                    }
+                                    ],
+                                    "sortBy": [
+                                    {
+                                        "itemKey": "$gen_date_Timestamp_0",
+                                        "sortOrder": 2
+                                    }
+                                    ],
+                                    "labelSettings": [
+                                    {
+                                        "columnId": "Timestamp"
+                                    },
+                                    {
+                                        "columnId": "FunctionName"
+                                    },
+                                    {
+                                        "columnId": "Reason"
+                                    },
+                                    {
+                                        "columnId": "AppName",
+                                        "label": "App Name"
+                                    },
+                                    {
+                                        "columnId": "operation_Id",
+                                        "label": "Operation ID"
+                                    },
+                                    {
+                                        "columnId": "itemId"
+                                    }
+                                    ]
+                                },
+                                "sortBy": [
+                                    {
+                                    "itemKey": "$gen_date_Timestamp_0",
+                                    "sortOrder": 2
+                                    }
+                                ]
+                                },
+                                "showPin": true,
+                                "name": "query - 3"
+                            },
+                            {
+                                "type": 3,
+                                "content": {
+                                "version": "KqlItem/1.0",
+                                "query": "union traces,exceptions, customEvents\n| where operation_Name <> \"\" and severityLevel >= {LogLevel} and operation_Id == '{functionOpId}'\n| project Timestamp=timestamp,Message=message,Level=severityLevel,Category=customDimensions.Category,EventID=customDimensions.EventId,EnventName=customDimensions.EnventName,FuncApp=appName,itemId,customDimensions\n| order by Timestamp desc\n",
+                                "size": 0,
+                                "showAnalytics": true,
+                                "title": "Functions logs",
+                                "timeContext": {
+                                    "durationMs": 86400000
+                                },
+                                "timeContextFromParameter": "TimeRange",
+                                "exportFieldName": "itemId",
+                                "exportParameterName": "itemId",
+                                "queryType": 0,
+                                "resourceType": "microsoft.insights/components",
+                                "visualization": "table",
+                                "gridSettings": {
+                                    "formatters": [
+                                    {
+                                        "columnMatch": "Timestamp",
+                                        "formatter": 6,
+                                        "formatOptions": {
+                                        "linkColumn": "itemId",
+                                        "linkTarget": "TraceDetails",
+                                        "linkIsContextBlade": true,
+                                        "customColumnWidthSetting": "10%"
+                                        },
+                                        "dateFormat": {
+                                        "showUtcTime": null,
+                                        "formatName": "shortDateTimePattern"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "Message",
+                                        "formatter": 1,
+                                        "formatOptions": {
+                                        "customColumnWidthSetting": "80%"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "Level",
+                                        "formatter": 11,
+                                        "formatOptions": {
+                                        "customColumnWidthSetting": "15ch"
+                                        }
+                                    },
+                                    {
+                                        "columnMatch": "itemId",
+                                        "formatter": 5
+                                    },
+                                    {
+                                        "columnMatch": "customDimensions",
+                                        "formatter": 5
+                                    }
+                                    ],
+                                    "rowLimit": 1000,
+                                    "filter": true,
+                                    "sortBy": [
+                                    {
+                                        "itemKey": "$gen_date_Timestamp_0",
+                                        "sortOrder": 2
+                                    }
+                                    ]
+                                },
+                                "sortBy": [
+                                    {
+                                    "itemKey": "$gen_date_Timestamp_0",
+                                    "sortOrder": 2
+                                    }
+                                ]
+                                },
+                                "showPin": true,
+                                "name": "query - 2"
+                            }
+                            ]
+                        },
+                        "name": "Log Group"
+                        }
+                    ],
+                    "fallbackResourceIds": [
+                        "/subscriptions/b0570a95-0377-4937-8e15-6555b6f600f4/resourceGroups/LECertManager/providers/microsoft.insights/components/mc-lecert-mgr"
+                    ],
+                    "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+                }
+            }
+        },        
+
+        {
+            "type": "microsoft.insights/workbooks",
+            "apiVersion": "2018-06-17-preview",
+            "name": "[variables('workbookId')]",            
+            "location": "[resourceGroup().location]",            
+            "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', variables('funcAppName'))]"
+            ],
+            "kind": "shared",
+            "properties": {
+                "displayName": "Let's Encrypt Manager Monitoring",
+                "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# Lets Encrypt Certificate Manager Monitoring\"},\"name\":\"text - 2\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"loadType\":\"always\",\"items\":[{\"type\":1,\"content\":{\"json\":\"## Exceptions in functions\"},\"name\":\"text - 4\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"union exceptions\\r\\n| order by timestamp desc \\r\\n| project Timestamp=timestamp, Icon=\\\"error\\\", Type=type, Message=outerMessage, Method=method, Category=customDimensions.Category, FmtMessage=customDimensions.FormattedMessage, Function=operation_Name, AppName=appName, itemId\",\"size\":1,\"showAnalytics\":true,\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"ExceptionDetails\",\"linkIsContextBlade\":true,\"customColumnWidthSetting\":\"23ch\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Icon\",\"formatter\":11},{\"columnMatch\":\"Message\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"50%\"}},{\"columnMatch\":\"itemId\",\"formatter\":5,\"formatOptions\":{\"customColumnWidthSetting\":\"42ch\"}}],\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":1}],\"labelSettings\":[{\"columnId\":\"Timestamp\"},{\"columnId\":\"Icon\",\"label\":\"\"},{\"columnId\":\"Type\"},{\"columnId\":\"Message\"},{\"columnId\":\"Method\"},{\"columnId\":\"Category\"},{\"columnId\":\"FmtMessage\"},{\"columnId\":\"Function\"},{\"columnId\":\"AppName\"},{\"columnId\":\"itemId\"}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":1}]},\"showPin\":true,\"name\":\"query - 3\",\"styleSettings\":{\"showBorder\":true}}]},\"name\":\"ExceptionsGroup\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"loadType\":\"always\",\"items\":[{\"type\":1,\"content\":{\"json\":\"## Functions Logs\"},\"name\":\"text - 5\"},{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"719235e8-9db3-4c9f-95cc-4692dc28fa01\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"TimeRange\",\"label\":\"Time Ramge\",\"type\":4,\"isRequired\":true,\"value\":{\"durationMs\":86400000},\"typeSettings\":{\"selectableValues\":[{\"durationMs\":300000},{\"durationMs\":1800000},{\"durationMs\":3600000},{\"durationMs\":14400000},{\"durationMs\":43200000},{\"durationMs\":86400000},{\"durationMs\":172800000},{\"durationMs\":259200000},{\"durationMs\":604800000}],\"allowCustom\":true},\"timeContext\":{\"durationMs\":86400000}},{\"id\":\"328e7b40-d711-4ad8-96c8-8dca3f65d83a\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"LogLevel\",\"label\":\"Level\",\"type\":2,\"isRequired\":true,\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"jsonData\":\"[\\r\\n    {\\\"value\\\": \\\"0\\\", \\\"label\\\": \\\"Verbose\\\" },\\r\\n    {\\\"value\\\": \\\"1\\\", \\\"label\\\": \\\"Information\\\", \\\"selected\\\": true },\\r\\n    {\\\"value\\\": \\\"2\\\", \\\"label\\\": \\\"Warning\\\" },\\r\\n    {\\\"value\\\": \\\"3\\\", \\\"label\\\": \\\"Errors\\\" }\\r\\n]\",\"timeContext\":{\"durationMs\":86400000}}],\"style\":\"above\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"},\"name\":\"parameters - 2\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"let errorOps =  traces\\r\\n| where operation_Id <> \\\"\\\" and operation_Name <> \\\"\\\"\\r\\n| summarize ErrLevel=max(severityLevel) by operation_Id;\\r\\ntraces \\r\\n| where customDimensions.EventId == '1' and customDimensions.EventName == 'FunctionStarted'\\r\\n| join (errorOps) on operation_Id\\r\\n| project Timestamp=timestamp, Icon=iff(ErrLevel>1,tostring(ErrLevel),''), FunctionName=operation_Name,Reason=customDimensions.prop__reason,AppName=appName, operation_Id,itemId\",\"size\":1,\"showAnalytics\":true,\"title\":\"Function invocations\",\"timeContext\":{\"durationMs\":86400000},\"timeContextFromParameter\":\"TimeRange\",\"exportFieldName\":\"operation_Id\",\"exportParameterName\":\"functionOpId\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"showExpandCollapseGrid\":true,\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"TraceDetails\",\"customColumnWidthSetting\":\"25ch\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Icon\",\"formatter\":11},{\"columnMatch\":\"FunctionName\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"15%\"}},{\"columnMatch\":\"Reason\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"40%\"}},{\"columnMatch\":\"itemId\",\"formatter\":5}],\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}],\"labelSettings\":[{\"columnId\":\"Timestamp\"},{\"columnId\":\"FunctionName\"},{\"columnId\":\"Reason\"},{\"columnId\":\"AppName\",\"label\":\"App Name\"},{\"columnId\":\"operation_Id\",\"label\":\"Operation ID\"},{\"columnId\":\"itemId\"}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"showPin\":true,\"name\":\"query - 3\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"union traces,exceptions, customEvents\\n| where operation_Name <> \\\"\\\" and severityLevel >= {LogLevel} and operation_Id == '{functionOpId}'\\n| project Timestamp=timestamp,Message=message,Level=severityLevel,Category=customDimensions.Category,EventID=customDimensions.EventId,EnventName=customDimensions.EnventName,FuncApp=appName,itemId,customDimensions\\n| order by Timestamp desc\\n\",\"size\":0,\"showAnalytics\":true,\"title\":\"Functions logs\",\"timeContext\":{\"durationMs\":86400000},\"timeContextFromParameter\":\"TimeRange\",\"exportFieldName\":\"itemId\",\"exportParameterName\":\"itemId\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"TraceDetails\",\"linkIsContextBlade\":true,\"customColumnWidthSetting\":\"10%\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Message\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"80%\"}},{\"columnMatch\":\"Level\",\"formatter\":11,\"formatOptions\":{\"customColumnWidthSetting\":\"15ch\"}},{\"columnMatch\":\"itemId\",\"formatter\":5},{\"columnMatch\":\"customDimensions\",\"formatter\":5}],\"rowLimit\":1000,\"filter\":true,\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"showPin\":true,\"name\":\"query - 2\"}]},\"name\":\"Log Group\"}],\"isLocked\":false,\"fallbackResourceIds\":[\"/subscriptions/b0570a95-0377-4937-8e15-6555b6f600f4/resourceGroups/LECertManager/providers/microsoft.insights/components/mc-lecert-mgr\"]}",
+                "version": "1.0",
+                "sourceId": "[resourceId('Microsoft.Insights/components', variables('funcAppName'))]",
+                "category": "tsg"
+            }
         }
-        
+
     ],
-    "outputs": {  }
+    "outputs": {}
 }
