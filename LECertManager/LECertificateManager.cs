@@ -18,6 +18,9 @@ namespace LECertManager
     // ReSharper disable once InconsistentNaming
     public class LECertificateManager
     {
+        public const string ForceUpdateParameterName = "force";
+        public const string MonitoringTestParameterName = "monitoringtest";
+        
         private readonly CertificateService certificateService;
         private readonly ILogger<LECertificateManager> logger;
         private readonly AppSettings settings;
@@ -110,6 +113,9 @@ namespace LECertManager
         /// Если сертификат не обновлен то возвращается 204 No Content
         /// 
         /// Для принудительного обновления  нужно указать парамтер force=true в Query запроса
+        ///
+        /// Параметр monitoringtest=true приводит к записи в лог тестового исключения (Exception telemetry) и возврата
+        /// кода ошибки 400
         /// 
         /// </summary>
         /// <param name="req">HTTP-request, предоставляется Host'ом</param>
@@ -122,6 +128,9 @@ namespace LECertManager
         {
             try
             {
+                //Throw exception if monitoringtest=true
+                ThrowTestMonitoringException(req);
+                
                 var newCert = await certificateService.UpdateCertificateAsync(name, IsForceParam(req));
 
                 if (newCert == null)
@@ -142,38 +151,52 @@ namespace LECertManager
             }
         }
 
+        protected void ThrowTestMonitoringException(HttpRequest req)
+        {
+            if (IsMonitoringTestParam(req))
+            {
+                throw new RequestProcessingException("Monitoring test exception!", HttpStatusCode.BadRequest);
+            }
+        }
+
         protected IActionResult ProcessException(Exception e)
         {
             ObjectResult ret;
+
+            string msg = e.GetType() + ": " + e.Message;
             
-            if (e is CertificateNotFoundException)
+            if (e is RequestProcessingException reqExc)
             {
-                ret = new ObjectResult(e.Message) {StatusCode = (int) HttpStatusCode.NotFound};
-            }else if (e is ArgumentException)
+                ret = new ObjectResult(msg) {StatusCode = (int) reqExc.StatusCode};
+            }
+            else if (e is ArgumentException)
             {
-                ret = new ObjectResult(e.GetType() + ": " + e.Message) 
+                ret = new ObjectResult(msg) 
                     {StatusCode = (int) HttpStatusCode.BadRequest};
             }
             else
             {
-                ret = new  ObjectResult(e.GetType() + ": " + e.Message)
+                ret = new  ObjectResult(msg)
                     {StatusCode = (int) HttpStatusCode.InternalServerError};
             }
             
-            logger.LogError(e, $"Error in function (return code: {ret.StatusCode}): {e.Message}");
+            logger.LogError(e, $"Error in function (return code: {ret.StatusCode}): {msg}");
 
             return ret;
         }
 
-        protected bool IsForceParam(HttpRequest req)
+        protected bool IsForceParam(HttpRequest req) => IsBoolParam(req, ForceUpdateParameterName);
+        protected bool IsMonitoringTestParam(HttpRequest req) => IsBoolParam(req, MonitoringTestParameterName);
+
+        
+        protected bool IsBoolParam(HttpRequest req, string paramName)
         {
-            const string forceParam = "force";
-            bool isForce = false;
+            bool ret = false;
 
-            if (req.Query.ContainsKey(forceParam) && !bool.TryParse(req.Query[forceParam], out isForce))
-                throw new ArgumentException($"Invalid value of the query string \"force\" parameter!");
+            if (req.Query.ContainsKey(paramName) && !bool.TryParse(req.Query[paramName], out ret))
+                throw new ArgumentException($"Invalid value of the query string \"{paramName}\" parameter!");
 
-            return isForce;
+            return ret;
         }
         
         /// <summary>
