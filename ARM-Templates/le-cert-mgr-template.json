@@ -20,6 +20,9 @@
         "funcAppName": "[concat(parameters('namePrefix'), '-lecert-mgr')]",
         "keyVaultName": "[concat(parameters('namePrefix'), '-lecert-kv')]",
         "workbookTplName": "[concat(parameters('namePrefix'), '-lecert-workbook-template')]",
+        "actionGroupName": "[concat(parameters('namePrefix'), '-lecert-notify')]",
+        "actionGroupNameShortname": "[concat(parameters('namePrefix'), '-adm-grp')]",
+        "alertName": "Exception in LE Cert Manager functions",
         "workbookId": "16b3eafc-0a7b-426c-9a8b-35e5bb83753b",
         "configContainerName": "app-config",
         "sasParams": {
@@ -513,12 +516,12 @@
                                 "type": 3,
                                 "content": {
                                 "version": "KqlItem/1.0",
-                                "query": "union traces,exceptions, customEvents\n| where operation_Name <> \"\" and severityLevel >= {LogLevel} and operation_Id == '{functionOpId}'\n| project Timestamp=timestamp,Message=message,Level=severityLevel,Category=customDimensions.Category,EventID=customDimensions.EventId,EnventName=customDimensions.EnventName,FuncApp=appName,itemId,customDimensions\n| order by Timestamp desc\n",
+                                "query": "union traces,exceptions, customEvents\n| where operation_Name <> \"\" and severityLevel >= {LogLevel} and operation_Id == '{functionOpId}'\n| project Timestamp=timestamp,Message=iff(isnotempty(message),message,customDimensions.FormattedMessage),Level=severityLevel,Category=customDimensions.Category,EventID=customDimensions.EventId,EnventName=customDimensions.EnventName,FuncApp=appName,itemId,customDimensions\n| order by Timestamp desc\n",
                                 "size": 0,
                                 "showAnalytics": true,
                                 "title": "Functions logs",
                                 "timeContext": {
-                                    "durationMs": 86400000
+                                    "durationMs": 0
                                 },
                                 "timeContextFromParameter": "TimeRange",
                                 "exportFieldName": "itemId",
@@ -589,11 +592,8 @@
                         "name": "Log Group"
                         }
                     ],
-                    "fallbackResourceIds": [
-                        "/subscriptions/b0570a95-0377-4937-8e15-6555b6f600f4/resourceGroups/LECertManager/providers/microsoft.insights/components/mc-lecert-mgr"
-                    ],
                     "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
-                }
+                    }
             }
         },        
 
@@ -608,10 +608,70 @@
             "kind": "shared",
             "properties": {
                 "displayName": "Let's Encrypt Manager Monitoring",
-                "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# Lets Encrypt Certificate Manager Monitoring\"},\"name\":\"text - 2\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"loadType\":\"always\",\"items\":[{\"type\":1,\"content\":{\"json\":\"## Exceptions in functions\"},\"name\":\"text - 4\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"union exceptions\\r\\n| order by timestamp desc \\r\\n| project Timestamp=timestamp, Icon=\\\"error\\\", Type=type, Message=outerMessage, Method=method, Category=customDimensions.Category, FmtMessage=customDimensions.FormattedMessage, Function=operation_Name, AppName=appName, itemId\",\"size\":1,\"showAnalytics\":true,\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"ExceptionDetails\",\"linkIsContextBlade\":true,\"customColumnWidthSetting\":\"23ch\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Icon\",\"formatter\":11},{\"columnMatch\":\"Message\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"50%\"}},{\"columnMatch\":\"itemId\",\"formatter\":5,\"formatOptions\":{\"customColumnWidthSetting\":\"42ch\"}}],\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":1}],\"labelSettings\":[{\"columnId\":\"Timestamp\"},{\"columnId\":\"Icon\",\"label\":\"\"},{\"columnId\":\"Type\"},{\"columnId\":\"Message\"},{\"columnId\":\"Method\"},{\"columnId\":\"Category\"},{\"columnId\":\"FmtMessage\"},{\"columnId\":\"Function\"},{\"columnId\":\"AppName\"},{\"columnId\":\"itemId\"}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":1}]},\"showPin\":true,\"name\":\"query - 3\",\"styleSettings\":{\"showBorder\":true}}]},\"name\":\"ExceptionsGroup\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"loadType\":\"always\",\"items\":[{\"type\":1,\"content\":{\"json\":\"## Functions Logs\"},\"name\":\"text - 5\"},{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"719235e8-9db3-4c9f-95cc-4692dc28fa01\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"TimeRange\",\"label\":\"Time Ramge\",\"type\":4,\"isRequired\":true,\"value\":{\"durationMs\":86400000},\"typeSettings\":{\"selectableValues\":[{\"durationMs\":300000},{\"durationMs\":1800000},{\"durationMs\":3600000},{\"durationMs\":14400000},{\"durationMs\":43200000},{\"durationMs\":86400000},{\"durationMs\":172800000},{\"durationMs\":259200000},{\"durationMs\":604800000}],\"allowCustom\":true},\"timeContext\":{\"durationMs\":86400000}},{\"id\":\"328e7b40-d711-4ad8-96c8-8dca3f65d83a\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"LogLevel\",\"label\":\"Level\",\"type\":2,\"isRequired\":true,\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"jsonData\":\"[\\r\\n    {\\\"value\\\": \\\"0\\\", \\\"label\\\": \\\"Verbose\\\" },\\r\\n    {\\\"value\\\": \\\"1\\\", \\\"label\\\": \\\"Information\\\", \\\"selected\\\": true },\\r\\n    {\\\"value\\\": \\\"2\\\", \\\"label\\\": \\\"Warning\\\" },\\r\\n    {\\\"value\\\": \\\"3\\\", \\\"label\\\": \\\"Errors\\\" }\\r\\n]\",\"timeContext\":{\"durationMs\":86400000}}],\"style\":\"above\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"},\"name\":\"parameters - 2\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"let errorOps =  traces\\r\\n| where operation_Id <> \\\"\\\" and operation_Name <> \\\"\\\"\\r\\n| summarize ErrLevel=max(severityLevel) by operation_Id;\\r\\ntraces \\r\\n| where customDimensions.EventId == '1' and customDimensions.EventName == 'FunctionStarted'\\r\\n| join (errorOps) on operation_Id\\r\\n| project Timestamp=timestamp, Icon=iff(ErrLevel>1,tostring(ErrLevel),''), FunctionName=operation_Name,Reason=customDimensions.prop__reason,AppName=appName, operation_Id,itemId\",\"size\":1,\"showAnalytics\":true,\"title\":\"Function invocations\",\"timeContext\":{\"durationMs\":86400000},\"timeContextFromParameter\":\"TimeRange\",\"exportFieldName\":\"operation_Id\",\"exportParameterName\":\"functionOpId\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"showExpandCollapseGrid\":true,\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"TraceDetails\",\"customColumnWidthSetting\":\"25ch\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Icon\",\"formatter\":11},{\"columnMatch\":\"FunctionName\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"15%\"}},{\"columnMatch\":\"Reason\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"40%\"}},{\"columnMatch\":\"itemId\",\"formatter\":5}],\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}],\"labelSettings\":[{\"columnId\":\"Timestamp\"},{\"columnId\":\"FunctionName\"},{\"columnId\":\"Reason\"},{\"columnId\":\"AppName\",\"label\":\"App Name\"},{\"columnId\":\"operation_Id\",\"label\":\"Operation ID\"},{\"columnId\":\"itemId\"}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"showPin\":true,\"name\":\"query - 3\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"union traces,exceptions, customEvents\\n| where operation_Name <> \\\"\\\" and severityLevel >= {LogLevel} and operation_Id == '{functionOpId}'\\n| project Timestamp=timestamp,Message=message,Level=severityLevel,Category=customDimensions.Category,EventID=customDimensions.EventId,EnventName=customDimensions.EnventName,FuncApp=appName,itemId,customDimensions\\n| order by Timestamp desc\\n\",\"size\":0,\"showAnalytics\":true,\"title\":\"Functions logs\",\"timeContext\":{\"durationMs\":86400000},\"timeContextFromParameter\":\"TimeRange\",\"exportFieldName\":\"itemId\",\"exportParameterName\":\"itemId\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"TraceDetails\",\"linkIsContextBlade\":true,\"customColumnWidthSetting\":\"10%\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Message\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"80%\"}},{\"columnMatch\":\"Level\",\"formatter\":11,\"formatOptions\":{\"customColumnWidthSetting\":\"15ch\"}},{\"columnMatch\":\"itemId\",\"formatter\":5},{\"columnMatch\":\"customDimensions\",\"formatter\":5}],\"rowLimit\":1000,\"filter\":true,\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"showPin\":true,\"name\":\"query - 2\"}]},\"name\":\"Log Group\"}],\"isLocked\":false,\"fallbackResourceIds\":[\"/subscriptions/b0570a95-0377-4937-8e15-6555b6f600f4/resourceGroups/LECertManager/providers/microsoft.insights/components/mc-lecert-mgr\"]}",
+                "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# Lets Encrypt Certificate Manager Monitoring\"},\"name\":\"text - 2\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"loadType\":\"always\",\"items\":[{\"type\":1,\"content\":{\"json\":\"## Exceptions in functions\"},\"name\":\"text - 4\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"union exceptions\\r\\n| order by timestamp desc \\r\\n| project Timestamp=timestamp, Icon=\\\"error\\\", Type=type, Message=outerMessage, Method=method, Category=customDimensions.Category, FmtMessage=customDimensions.FormattedMessage, Function=operation_Name, AppName=appName, itemId\",\"size\":1,\"showAnalytics\":true,\"timeContext\":{\"durationMs\":86400000},\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"ExceptionDetails\",\"linkIsContextBlade\":true,\"customColumnWidthSetting\":\"23ch\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Icon\",\"formatter\":11},{\"columnMatch\":\"Message\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"50%\"}},{\"columnMatch\":\"itemId\",\"formatter\":5,\"formatOptions\":{\"customColumnWidthSetting\":\"42ch\"}}],\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":1}],\"labelSettings\":[{\"columnId\":\"Timestamp\"},{\"columnId\":\"Icon\",\"label\":\"\"},{\"columnId\":\"Type\"},{\"columnId\":\"Message\"},{\"columnId\":\"Method\"},{\"columnId\":\"Category\"},{\"columnId\":\"FmtMessage\"},{\"columnId\":\"Function\"},{\"columnId\":\"AppName\"},{\"columnId\":\"itemId\"}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":1}]},\"showPin\":true,\"name\":\"query - 3\",\"styleSettings\":{\"showBorder\":true}}]},\"name\":\"ExceptionsGroup\"},{\"type\":12,\"content\":{\"version\":\"NotebookGroup/1.0\",\"groupType\":\"editable\",\"loadType\":\"always\",\"items\":[{\"type\":1,\"content\":{\"json\":\"## Functions Logs\"},\"name\":\"text - 5\"},{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"719235e8-9db3-4c9f-95cc-4692dc28fa01\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"TimeRange\",\"label\":\"Time Ramge\",\"type\":4,\"isRequired\":true,\"value\":{\"durationMs\":86400000},\"typeSettings\":{\"selectableValues\":[{\"durationMs\":300000},{\"durationMs\":1800000},{\"durationMs\":3600000},{\"durationMs\":14400000},{\"durationMs\":43200000},{\"durationMs\":86400000},{\"durationMs\":172800000},{\"durationMs\":259200000},{\"durationMs\":604800000}],\"allowCustom\":true},\"timeContext\":{\"durationMs\":86400000}},{\"id\":\"328e7b40-d711-4ad8-96c8-8dca3f65d83a\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"LogLevel\",\"label\":\"Level\",\"type\":2,\"isRequired\":true,\"typeSettings\":{\"additionalResourceOptions\":[],\"showDefault\":false},\"jsonData\":\"[\\r\\n    {\\\"value\\\": \\\"0\\\", \\\"label\\\": \\\"Verbose\\\" },\\r\\n    {\\\"value\\\": \\\"1\\\", \\\"label\\\": \\\"Information\\\", \\\"selected\\\": true },\\r\\n    {\\\"value\\\": \\\"2\\\", \\\"label\\\": \\\"Warning\\\" },\\r\\n    {\\\"value\\\": \\\"3\\\", \\\"label\\\": \\\"Errors\\\" }\\r\\n]\",\"timeContext\":{\"durationMs\":86400000}}],\"style\":\"above\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\"},\"name\":\"parameters - 2\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"let errorOps =  traces\\r\\n| where operation_Id <> \\\"\\\" and operation_Name <> \\\"\\\"\\r\\n| summarize ErrLevel=max(severityLevel) by operation_Id;\\r\\ntraces \\r\\n| where customDimensions.EventId == '1' and customDimensions.EventName == 'FunctionStarted'\\r\\n| join (errorOps) on operation_Id\\r\\n| project Timestamp=timestamp, Icon=iff(ErrLevel>1,tostring(ErrLevel),''), FunctionName=operation_Name,Reason=customDimensions.prop__reason,AppName=appName, operation_Id,itemId\",\"size\":1,\"showAnalytics\":true,\"title\":\"Function invocations\",\"timeContext\":{\"durationMs\":86400000},\"timeContextFromParameter\":\"TimeRange\",\"exportFieldName\":\"operation_Id\",\"exportParameterName\":\"functionOpId\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"showExpandCollapseGrid\":true,\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"TraceDetails\",\"customColumnWidthSetting\":\"25ch\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Icon\",\"formatter\":11},{\"columnMatch\":\"FunctionName\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"15%\"}},{\"columnMatch\":\"Reason\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"40%\"}},{\"columnMatch\":\"itemId\",\"formatter\":5}],\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}],\"labelSettings\":[{\"columnId\":\"Timestamp\"},{\"columnId\":\"FunctionName\"},{\"columnId\":\"Reason\"},{\"columnId\":\"AppName\",\"label\":\"App Name\"},{\"columnId\":\"operation_Id\",\"label\":\"Operation ID\"},{\"columnId\":\"itemId\"}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"showPin\":true,\"name\":\"query - 3\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"union traces,exceptions, customEvents\\n| where operation_Name <> \\\"\\\" and severityLevel >= {LogLevel} and operation_Id == '{functionOpId}'\\n| project Timestamp=timestamp,Message=iff(isnotempty(message),message,customDimensions.FormattedMessage),Level=severityLevel,Category=customDimensions.Category,EventID=customDimensions.EventId,EnventName=customDimensions.EnventName,FuncApp=appName,itemId,customDimensions\\n| order by Timestamp desc\\n\",\"size\":0,\"showAnalytics\":true,\"title\":\"Functions logs\",\"timeContext\":{\"durationMs\":0},\"timeContextFromParameter\":\"TimeRange\",\"exportFieldName\":\"itemId\",\"exportParameterName\":\"itemId\",\"queryType\":0,\"resourceType\":\"microsoft.insights/components\",\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"Timestamp\",\"formatter\":6,\"formatOptions\":{\"linkColumn\":\"itemId\",\"linkTarget\":\"TraceDetails\",\"linkIsContextBlade\":true,\"customColumnWidthSetting\":\"10%\"},\"dateFormat\":{\"showUtcTime\":null,\"formatName\":\"shortDateTimePattern\"}},{\"columnMatch\":\"Message\",\"formatter\":1,\"formatOptions\":{\"customColumnWidthSetting\":\"80%\"}},{\"columnMatch\":\"Level\",\"formatter\":11,\"formatOptions\":{\"customColumnWidthSetting\":\"15ch\"}},{\"columnMatch\":\"itemId\",\"formatter\":5},{\"columnMatch\":\"customDimensions\",\"formatter\":5}],\"rowLimit\":1000,\"filter\":true,\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"sortBy\":[{\"itemKey\":\"$gen_date_Timestamp_0\",\"sortOrder\":2}]},\"showPin\":true,\"name\":\"query - 2\"}]},\"name\":\"Log Group\"}],\"isLocked\":false,\"fallbackResourceIds\":[\"/subscriptions/b0570a95-0377-4937-8e15-6555b6f600f4/resourceGroups/LECertManager/providers/Microsoft.Insights/components/mc-lecert-mgr\"]}",
                 "version": "1.0",
                 "sourceId": "[resourceId('Microsoft.Insights/components', variables('funcAppName'))]",
                 "category": "tsg"
+            }
+        },
+
+        {
+            "type": "microsoft.insights/actionGroups",
+            "apiVersion": "2019-03-01",
+            "name": "[variables('actionGroupName')]",
+            "location": "Global",
+            "properties": {
+                "groupShortName": "[variables('actionGroupNameShortname')]",
+                "enabled": true,
+                "emailReceivers": [],
+                "smsReceivers": [],
+                "webhookReceivers": [],
+                "itsmReceivers": [],
+                "azureAppPushReceivers": [],
+                "automationRunbookReceivers": [],
+                "voiceReceivers": [],
+                "logicAppReceivers": [],
+                "azureFunctionReceivers": []
+            }
+        },
+
+        {
+            "type": "microsoft.insights/scheduledqueryrules",
+            "apiVersion": "2018-04-16",
+            "name": "[variables('alertName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', variables('funcAppName'))]",
+                "[resourceId('microsoft.insights/actionGroups', variables('actionGroupName'))]"
+            ],
+            "properties": {
+                "description": "Alert on Exceptions in Let's Encrypt Cert manager functions",
+                "enabled": "true",
+                "source": {
+                    "query": "exceptions",
+                    "authorizedResources": [],
+                    "dataSourceId": "[resourceId('Microsoft.Insights/components', variables('funcAppName'))]",
+                    "queryType": "ResultCount"
+                },
+                "schedule": {
+                    "frequencyInMinutes": 15,
+                    "timeWindowInMinutes": 15
+                },
+                "action": {
+                    "severity": "0",
+                    "aznsAction": {
+                        "actionGroup": [
+                            "[resourceId('microsoft.insights/actionGroups', variables('actionGroupName'))]"
+                        ],
+                        "emailSubject": "Error in Let's Encrypt Certification Manager functions"
+                    },
+                    "throttlingInMin": 30,
+                    "trigger": {
+                        "thresholdOperator": "GreaterThan",
+                        "threshold": 0
+                    },
+                    "odata.type": "Microsoft.WindowsAzure.Management.Monitoring.Alerts.Models.Microsoft.AppInsights.Nexus.DataContracts.Resources.ScheduledQueryRules.AlertingAction"
+                }
             }
         }
 
